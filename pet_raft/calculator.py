@@ -1,6 +1,7 @@
 import pandas as pd
 import os
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def pet_raft_planner(file_path):
     """

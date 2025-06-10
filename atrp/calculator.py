@@ -1,6 +1,7 @@
 import pandas as pd
 import os
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def atrp_planner(file_path):
     file_path_sheet = file_path
@@ -557,6 +558,4 @@ def get_unique_monomers(data_file):
     # Output the unique monomers
     unique_monomers
     return unique_monomers
-test_path_atrp = "C:/Users/Cesar/Box/Sync files/2023/Experiments/CR1_32 DP Exp HighRes/test/Polymer_sheet_DP Var 05303025 Copoly.xlsx"
-
-atrp_planner(test_path_atrp)
+# 
