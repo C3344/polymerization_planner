@@ -30,4 +30,5 @@ from polymerization-planner import pet_raft planner
 
 This will take you to a link to PDF file showing how to setup your input
 
-For a step-by-step tutorial with usage examples, see the [polymerization planner tutorial (PDF)](https://github.com/C3344/polymerization_planner/blob/main/tutorial.pdf).
+For a step-by-step tutorial with usage examples, see the [polymerization planner tutorial (PDF)](https://github.com/C3344/polymerization_planner/blob/main/polymerization_planner/docs/tutorial.pdf).
+
