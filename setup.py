@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="polymerization_planner",
-    version="0.1.0dev10",
+    version="0.1.0",
     description="A tool to generate polymerization reaction recipes from user-defined molar ratios and stock concentrations. Please see the PDF instruction in the GitHub link provided.",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
