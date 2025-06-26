@@ -14,15 +14,20 @@ A simple Python tool to process Excel sheets and generate ATRP polymerization re
 
 ## Installation
 
+
 Clone this repository and install the package using pip:
 
 ```bash
 pip install -e .
+Can also access the tutorial by pip install polymerization-planner 
+from polymerization-planner import show_tutorial
+and then run show_tutorial()
 
-or do pip install polymerization-planner and import the relavant functions
-from polymerization-planner import atrp_planner
+from polymerization-planner import atrp_planner 
 from polymerization-planner import pet_raft planner
 
 ## Tutorial
+
+This will take you to a link to PDF file showing how to setup your input
 
 For a step-by-step tutorial with usage examples, see the [polymerization planner tutorial (PDF)](https://github.com/C3344/polymerization_planner/blob/main/tutorial.pdf).
