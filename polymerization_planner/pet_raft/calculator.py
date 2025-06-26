@@ -508,5 +508,5 @@ def get_unique_monomers(data_file):
 
 def show_tutorial():
     print(
-        "📘 Tutorial PDF: https://github.com/C3344/atrp_planner/blob/atrp_planner/docs/tutorial.pdf"
+        "📘 Tutorial PDF: https://github.com/C3344/polymerization_planner/blob/main/polymerization_planner/docs/tutorial.pdf"
     )

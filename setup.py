@@ -8,7 +8,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Cesar Ramirez",
     author_email="cr828@scarletmail.rutgers.edu",
-    url="https://github.com/C3344/polymerization_planner",
+    url="https://github.com/C3344/polymerization_planner/blob/main/polymerization_planner/docs/tutorial.pdf",
     packages=find_packages(),
     install_requires=[
         "pandas",
