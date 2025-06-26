@@ -18,3 +18,11 @@ Clone this repository and install the package using pip:
 
 ```bash
 pip install -e .
+
+or do pip install polymerization-planner and import the relavant functions
+from polymerization-planner import atrp_planner
+from polymerization-planner import pet_raft planner
+
+## Tutorial
+
+For a step-by-step tutorial with usage examples, see the [polymerization planner tutorial (PDF)](https://github.com/C3344/polymerization_planner/blob/main/tutorial.pdf).

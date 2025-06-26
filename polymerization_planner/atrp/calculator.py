@@ -1,18 +1,11 @@
 import pandas as pd
 import os
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
-def pet_raft_planner(file_path):
-    """
-    This function processes an Excel file containing polymerization data and calculates the necessary volumes of reagents
-    for polymer synthesis. It handles both copolymer and homopolymer cases, calculates reagent volumes based on desired concentrations,
-    and generates a final DataFrame with the required volumes for each reagent. Similar to ATRP calculator
-    Args:
-        file_path (str): Path to the Excel file containing polymerization data.
-    Returns:
-        pd.DataFrame: A DataFrame containing the calculated volumes of reagents needed for polymer synthesis.
-    """
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
+
+def atrp_planner(file_path):
     file_path_sheet = file_path
     data_file = pd.read_excel(file_path, sheet_name=None)
 
@@ -26,7 +19,6 @@ def pet_raft_planner(file_path):
         data = data_file
         monomer_df = None
         user_stocks_df = None
-
     # 2
 
     # The row parameter is used to match polymer ID in polymer sheet however if sample from that sheet
@@ -45,7 +37,12 @@ def pet_raft_planner(file_path):
             total_volume += monomer_volume
 
             # Check other components based on their feed ratios
-            component_to_column = {"CTA": "[CTA]", "photo catalyst": "[PC]"}
+            component_to_column = {
+                "Initiator": "[I]",
+                "Metal": "[Metal]",
+                "Ligand": "[L]",
+                "Photo catalyst": "[PC]",
+            }
             # This wasnt changed so therefore the calculation wouldnt have been affected for final ratios for things made beofre seems (01152025)
             # As monomer_volume = (row['Mf'] * row['Volume']) / row['[M]'] this was equation since stocks were 2M, (1000mM)*200/2000 = 100 so got lucky it would have been same for DP 200 since same as vol
             for component, concentration_column in component_to_column.items():
@@ -88,10 +85,11 @@ def pet_raft_planner(file_path):
     ].reset_index(drop=True)
 
     # 3
-
     # initializing volumes of reagents
     monomer_vol_needed = 0
-    cta_vol_needed = 0
+    ini_vol_needed = 0
+    metal_vol_needed = 0
+    ligand_vol_needed = 0
     pc_vol_needed = 0
     solvent_vol_needed = 0
 
@@ -101,12 +99,20 @@ def pet_raft_planner(file_path):
             monomer_vol_needed
             + polymers_needing_reag_adjust["Details"][current]["Monomer"]
         )
-        cta_vol_needed = (
-            cta_vol_needed + polymers_needing_reag_adjust["Details"][current]["CTA"]
+        ini_vol_needed = (
+            ini_vol_needed
+            + polymers_needing_reag_adjust["Details"][current]["Initiator"]
+        )
+        metal_vol_needed = (
+            metal_vol_needed + polymers_needing_reag_adjust["Details"][current]["Metal"]
+        )
+        ligand_vol_needed = (
+            ligand_vol_needed
+            + polymers_needing_reag_adjust["Details"][current]["Ligand"]
         )
         pc_vol_needed = (
             pc_vol_needed
-            + polymers_needing_reag_adjust["Details"][current]["photo catalyst"]
+            + polymers_needing_reag_adjust["Details"][current]["Photo catalyst"]
         )
         solvent_vol_needed = (
             solvent_vol_needed
@@ -114,9 +120,10 @@ def pet_raft_planner(file_path):
         )
 
     reagent_concentrations = {
-        "[CTA]": user_stocks_df["CTA"].dropna().tolist(),
+        "[L]": user_stocks_df["Ligand"].dropna().tolist(),
+        "[Metal]": user_stocks_df["Metal"].dropna().tolist(),
         "[PC]": user_stocks_df["PC"].dropna().tolist(),
-    }
+    }  # "[Metal]":[22.5,11.25, 5.625,2.8125,1.40625]
 
     # 4
 
@@ -134,26 +141,35 @@ def pet_raft_planner(file_path):
         # Iterate over each row in the dataframe
         for index, row in df.iterrows():
             # print('Row------')
-            possible_cta = []
+            possible_metal = []
+            possible_ligand = []
             possible_pc = []
             valid_combinations = []
 
             # Generate all combinations of reagents
-            metal_options = reagent_concentrations["[CTA]"]
+            metal_options = reagent_concentrations["[Metal]"]
+            ligand_options = reagent_concentrations["[L]"]
             pc_options = reagent_concentrations["[PC]"]
 
-            all_combinations = list(itertools.product(metal_options, pc_options))
+            all_combinations = list(
+                itertools.product(metal_options, ligand_options, pc_options)
+            )
 
             # Check each combination
-            for cta_conc, pc_conc in all_combinations:
-                CTA_volume = (
+            for metal_conc, ligand_conc, pc_conc in all_combinations:
+                metal_volume = (
                     row["Volume"]
-                    * (row["CTA"] * (row["Mf"] / row["Monomer"]))
-                    / cta_conc
+                    * (row["Metal"] * (row["Mf"] / row["Monomer"]))
+                    / metal_conc
+                )
+                ligand_volume = (
+                    row["Volume"]
+                    * (row["Ligand"] * (row["Mf"] / row["Monomer"]))
+                    / ligand_conc
                 )
                 pc_volume = (
                     row["Volume"]
-                    * (row["photo catalyst"] * (row["Mf"] / row["Monomer"]))
+                    * (row["Photo catalyst"] * (row["Mf"] / row["Monomer"]))
                     / pc_conc
                 )
                 monomer_volume = (
@@ -161,13 +177,18 @@ def pet_raft_planner(file_path):
                     * (row["Monomer"] * (row["Mf"] / row["Monomer"]))
                     / row["[M]"]
                 )
-
-                CTA_Volume = (
+                initiator_volume = (
                     row["Volume"]
-                    * (row["CTA"] * (row["Mf"] / row["Monomer"]))
-                    / row["[CTA]"]
+                    * (row["Initiator"] * (row["Mf"] / row["Monomer"]))
+                    / row["[I]"]
                 )
-                total_volume = CTA_volume + pc_volume + monomer_volume
+                total_volume = (
+                    metal_volume
+                    + ligand_volume
+                    + pc_volume
+                    + monomer_volume
+                    + initiator_volume
+                )
                 solvent_volume = 200 - total_volume
                 # Added 01152025 working on proposal as solvent volume wasnt accounted in total vol in this step which would cause the ratios to be wrong
                 if solvent_volume > 0 or solvent_volume == 0:
@@ -177,12 +198,16 @@ def pet_raft_planner(file_path):
                 # End of addition on 01152025
 
                 if total_volume <= row["Volume"] and all(
-                    v >= 5 for v in [CTA_volume, pc_volume, solvent_volume]
+                    v >= 5
+                    for v in [metal_volume, ligand_volume, pc_volume, solvent_volume]
                 ):
                     # print('Solvent accepted')
                     # print(solvent_volume)
-                    valid_combinations.append(f"[{cta_conc}, {pc_conc}]")
-                    possible_cta.append(cta_conc)
+                    valid_combinations.append(
+                        f"[{metal_conc}, {ligand_conc}, {pc_conc}]"
+                    )
+                    possible_metal.append(metal_conc)
+                    possible_ligand.append(ligand_conc)
                     possible_pc.append(pc_conc)
 
             # Append the results for this row to the list
@@ -191,8 +216,11 @@ def pet_raft_planner(file_path):
                     "Row": row[
                         "Polymer ID"
                     ],  # Same thing here turned row into polymer ID as wont match for a sampled polymer sheet
-                    "p[CTA]": ", ".join(map(str, set(possible_cta)))
-                    if possible_cta
+                    "p[Metal]": ", ".join(map(str, set(possible_metal)))
+                    if possible_metal
+                    else np.nan,
+                    "p[L]": ", ".join(map(str, set(possible_ligand)))
+                    if possible_ligand
                     else np.nan,
                     "p[PC]": ", ".join(map(str, set(possible_pc)))
                     if possible_pc
@@ -210,7 +238,6 @@ def pet_raft_planner(file_path):
         data["Sheet1"], reagent_concentrations
     )
     updated_combination_results.dropna()  # .reset_index(drop=True)
-
     # Now need to go through all the combinations and see whcih appear the most, and choose for each polymer
     # the combination that will be used, the combination chosen should be the one that
     # can be used for most, unless this sample only has a combination that works. After that need to find
@@ -234,6 +261,9 @@ def pet_raft_planner(file_path):
         if combination.strip()  # Ensure the combination is not empty
     )
 
+    # print("Unique Combinations:", unique_combinations)
+    # print("Total Unique Combinations:", len(unique_combinations))
+
     # Looking through all combinations and seeing frequency they appear
     # So then can choose the combinations that appear most so can make less stock solutions
 
@@ -244,6 +274,8 @@ def pet_raft_planner(file_path):
 
     # Count each unique combination
     combination_counts = Counter(all_combinations)
+
+    # print("Combination Frequency:", combination_counts)
 
     # Now going through the dataframe and looking at the possible combinations
     # Here we will make a decision of which to use for a certain polymer
@@ -265,6 +297,7 @@ def pet_raft_planner(file_path):
     )
 
     # Display the updated DataFrame with the best combination for each polymer
+    # print(updated_combination_results[["Row", "Best Combination"]])
 
     updated_combination_results_wo_Na = updated_combination_results.dropna()
     updated_combination_results_wo_Na.reset_index(drop=True)
@@ -289,20 +322,25 @@ def pet_raft_planner(file_path):
     def update_concentrations(row):
         # First check if the 'Best Combination' is NaN
         if pd.isna(
-            row["p[CTA]"]
+            row["p[Metal]"]
         ):  # Cant use best combinations column bc we didnt explicitly add an np.nan
-            row["[CTA]"], row["[PC]"] = np.nan, np.nan, np.nan
+            row["[Metal]"], row["[L]"], row["[PC]"] = np.nan, np.nan, np.nan
         else:
             # Split the string and convert to floats only if 'Best Combination' is not NaN
             concentrations = row["Best Combination"].strip("[]").split(",")
-            row["[CTA]"] = (
+            row["[Metal]"] = (
                 float(concentrations[0].strip())
                 if concentrations[0].strip()
                 else np.nan
             )
-            row["[PC]"] = (
+            row["[L]"] = (
                 float(concentrations[1].strip())
                 if concentrations[1].strip()
+                else np.nan
+            )
+            row["[PC]"] = (
+                float(concentrations[2].strip())
+                if concentrations[2].strip()
                 else np.nan
             )
         return row
@@ -316,10 +354,14 @@ def pet_raft_planner(file_path):
             [
                 "Polymer ID",
                 "Monomer",
-                "CTA",
-                "photo catalyst",
+                "Initiator",
+                "Metal",
+                "Ligand",
+                "Photo catalyst",
                 "[M]",
-                "[CTA]",
+                "[I]",
+                "[Metal]",
+                "[L]",
                 "[PC]",
                 "Mf",
                 "Volume",
@@ -328,11 +370,6 @@ def pet_raft_planner(file_path):
         .dropna()
         .reset_index(drop=True)
     )
-    # 6
-
-    # Now seeing how many unique concentrations there are for each reagent at each concentration
-    # and figuring out how much volumen is needed for each,can use first initial fn and store the volume for each reagent on DF
-
     # First using same initial function to get volumes (didnt change DF name should be fine as wont use the previous one again)
     updated_calculate_results = calculate_polymer_volume_updated(df)
     updated_calculate_results
@@ -350,7 +387,9 @@ def pet_raft_planner(file_path):
     # polymers_needing_reag_adjust['Details'][0]['Monomer']
 
     mon_vol = []
-    cta_vol = []
+    ini_vol = []
+    metal_vol = []
+    ligand_vol = []
     PC_vol = []
     solvent_vol = []
     for i in range(len(polymers_needing_reag_adjust["Row"])):
@@ -358,20 +397,36 @@ def pet_raft_planner(file_path):
         # polymers_needing_reag_adjust)
         # polymers_needing_reag_adjust['Details'][current]
         mon_vol.append(polymers_needing_reag_adjust["Details"][current]["Monomer"])
-        cta_vol.append(polymers_needing_reag_adjust["Details"][current]["CTA"])
+        ini_vol.append(polymers_needing_reag_adjust["Details"][current]["Initiator"])
+        metal_vol.append(polymers_needing_reag_adjust["Details"][current]["Metal"])
+        ligand_vol.append(polymers_needing_reag_adjust["Details"][current]["Ligand"])
         PC_vol.append(
-            polymers_needing_reag_adjust["Details"][current]["photo catalyst"]
+            polymers_needing_reag_adjust["Details"][current]["Photo catalyst"]
         )
         solvent_vol.append(polymers_needing_reag_adjust["Details"][current]["Solvent"])
 
     volumes_df = pd.DataFrame(
-        zip(mon_vol, cta_vol, PC_vol, solvent_vol),
-        columns=["Monomer Volume", "CTA Volume", "PC Volume", "Solvent Volume"],
+        zip(mon_vol, ini_vol, metal_vol, ligand_vol, PC_vol, solvent_vol),
+        columns=[
+            "Monomer Volume",
+            "Initiator Volume",
+            "Metal Volume",
+            "Ligand Volume",
+            "PC Volume",
+            "Solvent Volume",
+        ],
     )
     volumes_w_concent_df = (
         pd.concat([df_interest, volumes_df], axis=1)
         .round(
-            {"Monomer Volume": 2, "CTA Volume": 2, "PC Volume": 2, "Solvent Volume": 2}
+            {
+                "Monomer Volume": 2,
+                "Initiator Volume": 2,
+                "Metal Volume": 2,
+                "Ligand Volume": 2,
+                "PC Volume": 2,
+                "Solvent Volume": 2,
+            }
         )
         .dropna()
     )
@@ -379,7 +434,7 @@ def pet_raft_planner(file_path):
 
     # Now getting unique concentrations & storing in a dictionary for some reason some NaNs
     # Show up, I checked but there are non in DF & if check info() on dataframe no values are null
-    columns_of_interest = ["[CTA]", "[PC]"]
+    columns_of_interest = ["[Metal]", "[L]", "[PC]"]
 
     # Calculate the number of unique values in each of these columns
     unique_entries = volumes_w_concent_df[columns_of_interest].nunique()
@@ -391,10 +446,17 @@ def pet_raft_planner(file_path):
     for column in columns_of_interest:
         unique_values = df[column].unique()
         unique_concent_dict[column] = unique_values
-
-    volumes_w_concent_df["CTA Cf"] = (
-        volumes_w_concent_df["CTA Volume"]
-        * volumes_w_concent_df["[CTA]"]
+        # print(f"Unique values in {column}: {unique_values}")
+    # Just recalculating final concentrations of reagents based on the volumes needed for sanity
+    volumes_w_concent_df
+    volumes_w_concent_df["Metal Cf"] = (
+        volumes_w_concent_df["Metal Volume"]
+        * volumes_w_concent_df["[Metal]"]
+        / volumes_w_concent_df["Volume"]
+    )
+    volumes_w_concent_df["Ligand Cf"] = (
+        volumes_w_concent_df["Ligand Volume"]
+        * volumes_w_concent_df["[L]"]
         / volumes_w_concent_df["Volume"]
     )
     volumes_w_concent_df["PC Cf"] = (
@@ -402,7 +464,9 @@ def pet_raft_planner(file_path):
         * volumes_w_concent_df["[PC]"]
         / volumes_w_concent_df["Volume"]
     )
+    volumes_w_concent_df
 
+    # 8 If they got diff monomers here gonna ask for input
     # Re-import necessary library
 
     # Find unique monomers
@@ -417,7 +481,6 @@ def pet_raft_planner(file_path):
     monomer_percent_df = pd.DataFrame(columns=["Polymer ID"] + sorted(unique_monomers))
 
     # Fill the new DataFrame with Polymer ID and corresponding monomer percentages
-
     for index, row in monomer_df.iterrows():
         row_data = {"Polymer ID": row["Polymer ID"]}
         for mon_col, perc_col in zip(
@@ -426,6 +489,7 @@ def pet_raft_planner(file_path):
         ):
             if pd.notna(row[mon_col]):  # Check if monomer exists
                 row_data[row[mon_col]] = row[perc_col] if pd.notna(row[perc_col]) else 0
+
         # Append row to the new DataFrame
         monomer_percent_df = pd.concat(
             [monomer_percent_df, pd.DataFrame([row_data])], ignore_index=True
@@ -433,10 +497,6 @@ def pet_raft_planner(file_path):
 
     # Fill NaN values with 0 for missing monomer percentages
     monomer_percent_df.fillna(0, inplace=True)
-
-    # Display the new DataFrame
-    # import ace_tools as tools
-    # tools.display_dataframe_to_user(name="Monomer Percentage Data", dataframe=monomer_percent_df)
 
     # Merge the monomer_percent_df with volumes_w_concent_df to get the monomer volume for each row
     monomer_volume_df = monomer_percent_df.merge(volumes_w_concent_df, on="Polymer ID")
@@ -451,11 +511,8 @@ def pet_raft_planner(file_path):
     monomer_volume_df = monomer_volume_df.drop(columns=monomer_percent_df.columns[1:])
 
     # Display the final dataframe with monomer volumes
+
     volumes_w_concent_df = monomer_volume_df
-
-    ###############################here add the final thing
-
-    # Display the final dataframe with monomer volumes
 
     # Split the path into directory and filename
     # Here just saving and will put the dataframe in the same folder as the input file
